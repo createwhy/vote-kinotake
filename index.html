@@ -193,5 +193,69 @@
 <canvas id="ogp-canvas" width="1200" height="630" style="display:none"></canvas>
 
 <script src="script.js"></script>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Vote App</title>
+</head>
+
+<body>
+
+  <h1>投票アプリ</h1>
+
+  <button onclick="voteKinoko()">きのこ</button>
+  <button onclick="voteTakenoko()">たけのこ</button>
+
+  <p id="result"></p>
+
+  <!-- 👇ここからFirebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+    import { getDatabase, ref, onValue, update }
+    from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
+
+    // 🔴 ここにFirebaseの設定を貼る（超重要）
+    const firebaseConfig = {
+      apiKey: "AIzaSyCCXA1h2CBz5V3PXJpA5ycgtUpEhJ2vKgo",
+      authDomain: "test-mode-e742c.firebaseapp.com",
+      databaseURL: "https://test-mode-e742c-default-rtdb.firebaseio.com",
+      projectId: "test-mode-e742c",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const voteRef = ref(db, "vote");
+
+    // 🔄 みんなのデータを監視
+    onValue(voteRef, (snapshot) => {
+      const data = snapshot.val();
+      document.getElementById("result").innerText =
+        `きのこ: ${data.kinoko} / たけのこ: ${data.takenoko}`;
+    });
+
+    // 🍄 きのこ投票
+    window.voteKinoko = () => {
+      onValue(voteRef, (snapshot) => {
+        const data = snapshot.val();
+        update(voteRef, {
+          kinoko: data.kinoko + 1,
+          takenoko: data.takenoko
+        });
+      }, { onlyOnce: true });
+    };
+
+    // 🎋 たけのこ投票
+    window.voteTakenoko = () => {
+      onValue(voteRef, (snapshot) => {
+        const data = snapshot.val();
+        update(voteRef, {
+          kinoko: data.kinoko,
+          takenoko: data.takenoko + 1
+        });
+      }, { onlyOnce: true });
+    };
+
+  </script>
 </body>
 </html>
