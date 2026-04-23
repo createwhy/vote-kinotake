@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#d4edda">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta property="og:title" content="きのこの山 vs たけのこの里">
+  <meta property="og:description" content="あなたはどっち派？タップして今すぐ投票！">
+  <meta property="og:image" id="og-image-meta" content="">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>きのこの山 vs たけのこの里</title>
+
+  <!-- Supabase SDK（リアルタイム投票に必要） -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ① 合計投票数カード -->
+  <div class="total-card">
+    <p class="total-label">みんなの投票数</p>
+    <p class="total-num" id="total-count">0</p>
+    <div class="realtime-dot" id="realtime-dot" title="リアルタイム同期中"></div>
+  </div>
+
+  <!-- ② メイン投票エリア -->
+  <div class="vote-area">
+
+    <!-- 左：きのこの山 -->
+    <div class="side kinoko-side" id="side-kinoko">
+      <div class="side-bg" style="background-image:url('photos/background/kinoko_background.jpg')"></div>
+      <div class="side-overlay kinoko-overlay"></div>
+      <div class="side-content">
+        <div class="name-pill kinoko-pill">きのこの山</div>
+        <div class="count-wrap">
+          <span class="count-num" id="kinoko-num">0</span><span class="hyo">票</span>
+        </div>
+      </div>
+      <img class="char-img" src="photos/profile/kinoko_single.png" alt="きのこの山">
+    </div>
+
+    <!-- 中央バッジ（VS ↔ 接戦中🔥 切り替え） -->
+    <div class="center-badge-wrap">
+      <div class="vs-circle" id="vs-circle">VS</div>
+      <div class="close-battle-badge" id="close-battle">接戦中🔥</div>
+    </div>
+
+    <!-- 右：たけのこの里 -->
+    <div class="side takenoko-side" id="side-takenoko">
+      <div class="side-bg" style="background-image:url('photos/background/takenoko_background.jpg')"></div>
+      <div class="side-overlay takenoko-overlay"></div>
+      <div class="side-content">
+        <div class="name-pill takenoko-pill">たけのこの里</div>
+        <div class="count-wrap">
+          <span class="count-num" id="takenoko-num">0</span><span class="hyo">票</span>
+        </div>
+      </div>
+      <img class="char-img" src="photos/profile/takenoko_single.png" alt="たけのこの里">
+    </div>
+
+  </div>
+
+  <!-- ③ CTAバー -->
+  <div class="cta-bar">
+    <p class="cta-text">あなたの1票で結果が変わるかも!?</p>
+  </div>
+
+  <!-- ④ 投票ボタン -->
+  <div class="btn-row">
+    <button class="vote-btn kinoko-btn" id="btn-kinoko" type="button">
+      <img class="btn-char" src="photos/profile/kinoko_single.png" alt="">
+      <span class="btn-label">きのこの山に<br><strong>投票する!</strong></span>
+      <span class="btn-arrow">▶</span>
+    </button>
+    <button class="vote-btn takenoko-btn" id="btn-takenoko" type="button">
+      <img class="btn-char" src="photos/profile/takenoko_single.png" alt="">
+      <span class="btn-label">たけのこの里に<br><strong>投票する!</strong></span>
+      <span class="btn-arrow">▶</span>
+    </button>
+  </div>
+
+  <!-- ⑤ ボトムナビ -->
+  <nav class="bottom-nav">
+    <button class="nav-btn" id="nav-data">
+      <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <rect x="3" y="12" width="4" height="9" rx="1"/>
+        <rect x="10" y="7" width="4" height="14" rx="1"/>
+        <rect x="17" y="3" width="4" height="18" rx="1"/>
+      </svg>
+      <span>データ</span>
+    </button>
+    <button class="nav-btn" id="nav-howto">
+      <div class="nav-q">?</div>
+      <span>遊び方</span>
+    </button>
+    <button class="nav-btn" id="nav-share">
+      <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7"/>
+        <polyline points="16 6 12 2 8 6"/>
+        <line x1="12" y1="2" x2="12" y2="15"/>
+      </svg>
+      <span>シェアする</span>
+    </button>
+  </nav>
+
+</div><!-- /.app -->
+
+<!-- ===== データモーダル ===== -->
+<div class="overlay" id="data-overlay">
+  <div class="bottom-sheet" id="data-sheet">
+    <div class="sheet-handle"></div>
+    <h2 class="sheet-title">きのこの山 vs たけのこの里 データ比較</h2>
+
+    <!-- ヘッダー行：左=きのこの山、中=空、右=たけのこの里 -->
+    <div class="dc-header">
+      <div class="dc-h-kinoko">きのこの山</div>
+      <div class="dc-h-center"></div>
+      <div class="dc-h-takenoko">たけのこの里</div>
+    </div>
+
+    <div class="data-list" id="data-list"></div>
+
+    <p class="data-footnote">※古いデータ有。最新情報は各社公式サイトをご確認ください。</p>
+    <button class="sheet-close-btn" id="data-close">閉じる</button>
+  </div>
+</div>
+
+<!-- ===== シェアシート ===== -->
+<div class="overlay" id="share-overlay">
+  <div class="bottom-sheet share-sheet" id="share-sheet">
+    <div class="sheet-handle"></div>
+    <h2 class="sheet-title">シェアする</h2>
+
+    <button class="share-item" id="share-x">
+      <div class="share-icon x-icon">𝕏</div>
+      <div class="share-info">
+        <p class="share-name">Xに投稿</p>
+        <p class="share-desc">現在の票数を投稿</p>
+      </div>
+      <span class="share-chevron">›</span>
+    </button>
+
+    <button class="share-item" id="share-copy">
+      <div class="share-icon link-icon">🔗</div>
+      <div class="share-info">
+        <p class="share-name">URLをコピー</p>
+        <p class="share-desc">リンクをクリップボードに</p>
+      </div>
+      <span class="share-chevron">›</span>
+    </button>
+
+    <button class="sheet-cancel" id="share-cancel">キャンセル</button>
+  </div>
+</div>
+
+<!-- ===== 遊び方シート ===== -->
+<div class="overlay" id="howto-overlay">
+  <div class="bottom-sheet" id="howto-sheet">
+    <div class="sheet-handle"></div>
+    <h2 class="sheet-title">遊び方</h2>
+    <div class="howto-list">
+      <div class="howto-item">
+        <span class="howto-num">1</span>
+        <p>好きな方のボタンをタップして投票！</p>
+      </div>
+      <div class="howto-item">
+        <span class="howto-num">2</span>
+        <p>何度でも投票できます。あなたの応援が票数を動かす！</p>
+      </div>
+      <div class="howto-item">
+        <span class="howto-num">3</span>
+        <p>差が100票以内になると「接戦中🔥」が表示されます！</p>
+      </div>
+      <div class="howto-item">
+        <span class="howto-num">4</span>
+        <p>「シェアする」から結果を友達に見せよう！</p>
+      </div>
+    </div>
+    <button class="sheet-close-btn" id="howto-close">閉じる</button>
+  </div>
+</div>
+
+<!-- トースト -->
+<div class="toast" id="toast"></div>
+
+<!-- OGP生成用（不可視） -->
+<canvas id="ogp-canvas" width="1200" height="630" style="display:none"></canvas>
+
+<script src="script.js"></script>
+</body>
+</html>
